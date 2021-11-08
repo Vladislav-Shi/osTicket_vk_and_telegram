@@ -1,6 +1,7 @@
 import requests
 import re
 import json
+from telebot.types import PhotoSize
 
 
 class OsTelegramBot:
@@ -58,12 +59,13 @@ class OsTelegramBot:
         Args:
             userData ([dict]): данные типа data['message']['chat']
             message ([type]): само тело тикета
-            attachments (dict, optional): [description]. Defaults to {}.
+            attachments (dict, optional): [description]. массив типа [{<имя файла> : <сообщение в кодировка base64>}]
             userAgent (str, optional): [description]. Defaults to 'telegram-API/0.0.1'.
 
         Returns:
             Возвращает строку с id созданной заявки или 0 в случае неудачи
         """
+        print('createTicket run:')
         headers = {'X-API-Key': self.osToken,
                    'User-Agent': userAgent,
                    'content-type': 'application/json', }
@@ -80,8 +82,10 @@ class OsTelegramBot:
             },
             'key': self.osToken,
         }
+        print(data)
         r = requests.post(self.osUrl,
                           json=data, headers=headers, verify=False)
+        print('r', r)
         if r.status_code == 201:
             return r.text
         else:
@@ -99,7 +103,7 @@ class OsTelegramBot:
                 'email': userData['id'],
                 'message': message,
                 'ip': '127.0.0.1',
-                'attachments': attachments
+                'attachments': {attachments}
             },
             'key': self.osToken,
         }
@@ -173,6 +177,6 @@ class OsTelegramBot:
                     'username': username,
                     'ticketNumber': ticket_number},
                 'key': self.osToken}
-        print(data)
         response = requests.post(self.osUrl, json=data, verify=False)
         return response.text
+

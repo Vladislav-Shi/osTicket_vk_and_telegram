@@ -10,6 +10,7 @@ include_once 'class.myapi.php';
 // file_put_contents('file.txt', json_encode($_POST));
 $postData = file_get_contents('php://input');
 $data = json_decode($postData, true);
+
 // $data = array(
 //     'ticketNumber' => 670793,
 //     'name'      =>      'John Doe2',

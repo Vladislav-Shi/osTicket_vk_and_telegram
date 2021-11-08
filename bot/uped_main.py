@@ -1,16 +1,17 @@
 from typing import Text
 from flask import Flask, request
-from telebot.types import Message
+from telebot.types import File, Message, PhotoSize
 import osticketbot as tgb
-import telebot
+import telebot  # pyTelegrambotapi
 import time
+import base64
 
 app = Flask(__name__)
 token = '1995864519:AAHR1ceeWOgoPAHWUjpwe37lmDGkLPTLLqE'
 bot = telebot.TeleBot(token)
 osBot = tgb.OsTelegramBot(token, 'https://osticket.local/my_api/myapi.php',
                           '68AFA8405E8B569A1E8441C841182CFD')
-bot.set_webhook(url="https://ed86-217-149-179-106.ngrok.io")
+bot.set_webhook(url="https://dd16-5-139-146-236.ngrok.io")
 time.sleep(1)  # для фикса ошибки с большим кол-вом реквестов
 keyboard1 = telebot.types.ReplyKeyboardMarkup()
 keyboard1.row('/help', '/create')
@@ -36,7 +37,7 @@ def help_command(message: Message):
     if len(param) > 1:
         bot.send_message(message.chat.id, osBot.getHelpText(param[1]))
     else:
-         bot.send_message(message.chat.id, osBot.getHelpText())
+        bot.send_message(message.chat.id, osBot.getHelpText())
 
 
 @bot.message_handler(commands=['create'])
@@ -56,10 +57,23 @@ def history_command(message: Message):
     bot.send_message(message.chat.id, 'Введите номер запрашиваемого билета')
     bot.register_next_step_handler(message, ask_ticket_history)
 
-@bot.message_handler(content_types=['text'])
+
+@bot.message_handler(content_types=['text', 'document', 'photo'])
 def all_text_command(message: Message):
-    bot.send_message(message.chat.id, 'Воспользуйтесь клавиатурой для выбора нужного', reply_markup=keyboard1)
-    
+    """
+    если нет сообщения, то поле message.text = None
+    если нет документа, то поле message.document = None
+    если нет фотографии, то поле message.photo = None
+    если нет писания к вложению, то поле message.caption = None
+    """
+    print('text: ', message.text)
+    print('document: ', message.document)
+    print('caption: ', message.caption)
+    print('photo: ', message.photo)
+    # if not message.photo is None:
+    # print(getPhoto(message.photo))
+    bot.send_message(
+        message.chat.id, 'Воспользуйтесь клавиатурой для выбора нужного', reply_markup=keyboard1)
 
 
 def ask_ticket_history(message: Message):
@@ -86,7 +100,6 @@ def ask_ticket_to_add(message: Message):
 
 
 def add_ticket_ansver(message: Message, ticket_number):
-    print('\n\nticket_number: ', ticket_number)
     user_data = {'username': message.chat.username,
                  'id': 'id' + str(message.chat.id) + '@host.com'}
     result = osBot.addToTicket(ticket_number, message.text, user_data)
@@ -98,10 +111,36 @@ def add_ticket_ansver(message: Message, ticket_number):
 
 
 def ask_body_ticket(message: Message):
+    """[summary]
+
+    Args:
+        message (Message): сообщение которое будет добавлено
+    """
     user_data = {'username': message.chat.username,
                  'id': 'id' + str(message.chat.id) + '@host.com'}
-    result = osBot.createTicket(user_data,  message.text)
+    if not message.photo is None:
+        attacment = getPhoto(message.photo)
+        result = osBot.createTicket(user_data,  message.caption, attacment)
+    else:
+        result = osBot.createTicket(user_data,  message.text)
     bot.send_message(message.chat.id, result)
+
+
+def getPhoto(photo_array):
+    """[summary]
+
+    Args:
+        photo_array - list содаржащий все версии фотографии -1 элемент это оригинальный размер
+
+    Returns:
+        подходящий для отпарвки API словать
+    """
+    file_id = photo_array[-1].file_id
+    file_info = bot.get_file(file_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+    mimie_type = str(file_info.file_path.split('.')[-1])
+    data = 'data:image/'+ mimie_type +';base64,' + base64.b64encode(downloaded_file).decode("utf-8")
+    return {file_id + '.' + mimie_type: data}
 
 
 if(__name__ == '__main__'):

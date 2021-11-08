@@ -148,9 +148,13 @@ class MyAPI
             'url' => $this->url . 'tickets.json',
             'key' => $this->key,
         );
+
+        $validateData = $data;
+        $validateData['attachments'] = array($data['attachments']);
+
         function_exists('curl_version') or die('CURL support required');
         function_exists('json_encode') or die('JSON support required');
-        $this->createUser($data['name'], $data['email']); // создет пользоваетля если его не было до этого
+        $this->createUser($validateData['name'], $validateData['email']); // создет пользоваетля если его не было до этого
         #set timeout
         set_time_limit(40);
         #curl post
@@ -158,7 +162,7 @@ class MyAPI
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
         curl_setopt($ch, CURLOPT_URL, $config['url']);
         curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($validateData));
         curl_setopt($ch, CURLOPT_USERAGENT, 'osTicket API Client v1.7');
         curl_setopt($ch, CURLOPT_HEADER, FALSE);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Expect:', 'X-API-Key: ' . $config['key']));
