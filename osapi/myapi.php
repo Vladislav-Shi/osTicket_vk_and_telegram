@@ -7,7 +7,6 @@ include_once 'class.myapi.php';
  * $_POST['function'] - название функции которая может быть вызвана
  * $_POST['arg'] - ассоциативный массивы аргументов к ней
  */
-// file_put_contents('file.txt', json_encode($_POST));
 $postData = file_get_contents('php://input');
 $data = json_decode($postData, true);
 
@@ -19,7 +18,6 @@ $data = json_decode($postData, true);
 //     'ip'        =>      '127.0.0.1',
 //     'attachments' => array(),
 // );
-// $APIobject = new MyAPI('https://osticket.local/api/', '68AFA8405E8B569A1E8441C841182CFD');
 // echo $APIobject->addToTicket($data);
 // // $data = array('ticketNumber' => '670793', 'username' => 'user');
 // // echo $APIobject->getMessageStory($data);
@@ -28,8 +26,7 @@ if (empty($data['function'])) {
     die('Пост запрос пуст или составлен не правильно');
 }
 $APIobject = new MyAPI('https://osticket.local/api/', '68AFA8405E8B569A1E8441C841182CFD');
-if($data['key'] != '68AFA8405E8B569A1E8441C841182CFD')
-{
+if ($data['key'] != '68AFA8405E8B569A1E8441C841182CFD') {
     die('Неверный ключ досутпа к API');
 }
 echo $APIobject->callMethod($data);

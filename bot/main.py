@@ -1,21 +1,34 @@
+from re import A
 from typing import Text
 from flask import Flask, request
-from telebot.types import File, Message, PhotoSize
+from telebot.types import File, Message, KeyboardButton, ReplyKeyboardMarkup
 import osticketbot as tgb
 import telebot  # pyTelegrambotapi
 import time
 import base64
+import config  # Хранит конфигурационные перменные
 
 app = Flask(__name__)
-token = '1995864519:AAHR1ceeWOgoPAHWUjpwe37lmDGkLPTLLqE'
-bot = telebot.TeleBot(token)
-osBot = tgb.OsTelegramBot(token, 'https://osticket.local/my_api/myapi.php',
-                          '68AFA8405E8B569A1E8441C841182CFD')
-bot.set_webhook(url="https://dd16-5-139-146-236.ngrok.io")
+bot = telebot.TeleBot(config.token)
+osBot = tgb.OsTelegramBot(config.token, config.os_url,
+                          config.os_key)
+bot.set_webhook(url=config.webhook_url)
 time.sleep(1)  # для фикса ошибки с большим кол-вом реквестов
-keyboard1 = telebot.types.ReplyKeyboardMarkup()
-keyboard1.row('/help', '/create')
-keyboard1.row('/add', '/history')
+
+
+def build_menu(button_list_str: list[str], num_row=2):
+    button_list = [KeyboardButton(ss) for ss in button_list_str]
+    menu = [button_list[i:i + num_row]
+            for i in range(0, len(button_list), num_row)]
+    print(menu)
+    keyboard = ReplyKeyboardMarkup()
+    for line in menu:
+        keyboard.row(*line)
+    return keyboard
+
+
+keyboard1 = build_menu(config.keyboard_menu, 2)
+keyboard2 = build_menu(config.keyboard_seqtion, 2)
 
 
 @app.route('/', methods=["POST"])
@@ -35,9 +48,11 @@ def help_command(message: Message):
     """
     param = message.text.split()
     if len(param) > 1:
-        bot.send_message(message.chat.id, osBot.getHelpText(param[1]))
+        bot.send_message(message.chat.id, osBot.getHelpText(
+            param[1]),  reply_markup=None)
     else:
-        bot.send_message(message.chat.id, osBot.getHelpText())
+        bot.send_message(message.chat.id, osBot.getHelpText(),
+                         reply_markup=None)
 
 
 @bot.message_handler(commands=['create'])
@@ -102,7 +117,12 @@ def ask_ticket_to_add(message: Message):
 def add_ticket_ansver(message: Message, ticket_number):
     user_data = {'username': message.chat.username,
                  'id': 'id' + str(message.chat.id) + '@host.com'}
-    result = osBot.addToTicket(ticket_number, message.text, user_data)
+    if not message.photo is None:
+        attacment = getPhoto(message.photo)
+        result = osBot.addToTicket(
+            ticket_number, message.caption, user_data, attachments=attacment)
+    else:
+        result = osBot.addToTicket(ticket_number, message.text, user_data)
     print('result', result)
     if result['status'] == 'success':
         bot.send_message(message.chat.id, 'Ответ успешно добавлен')
@@ -139,7 +159,8 @@ def getPhoto(photo_array):
     file_info = bot.get_file(file_id)
     downloaded_file = bot.download_file(file_info.file_path)
     mimie_type = str(file_info.file_path.split('.')[-1])
-    data = 'data:image/'+ mimie_type +';base64,' + base64.b64encode(downloaded_file).decode("utf-8")
+    data = 'data:image/' + mimie_type + ';base64,' + \
+        base64.b64encode(downloaded_file).decode("utf-8")
     return {file_id + '.' + mimie_type: data}
 
 

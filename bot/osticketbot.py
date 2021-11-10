@@ -17,41 +17,6 @@ class OsTelegramBot:
         self.osUrl = osUrl
         self.osToken = osToken
 
-    def parserMessage(self, message: str):
-        """[summary]
-
-        Проверяет полученное сообщение и на его основе выбирает что нужно сделать
-        Args:
-            message ([type]): [description]
-
-        Returns:
-            Возвращается два значения
-            1) Сообщение для пользователя
-            2) функция для обработки (если таковая нужна)
-        """
-        lineMessage = message.splitlines()
-        command = lineMessage[0].split()
-        if command[0] == '-help':
-            return self.getHelpText()
-        elif command[0] == '-create':
-            if len(lineMessage) > 1:
-                return 'СОЗДАНИЕ ТИКЕТА'
-            else:
-                return 'Введите "-help create" для помощи по команде'
-            return 1
-        elif command[0] == '-add':
-            if len(command) > 1 and re.search(r'^[0-9]{6}', command[1]):
-                return 'Билет с таким id найден'
-            else:
-                return 'Не найдено, проверьте правильность введенного вами идентификатора или введите "-help add" для просмотра помощи по команде'
-        elif command[0] == '-get':
-            if len(command) > 1 and re.search(r'^[0-9]{6}', command[1]):
-                return 'Билет с таким id найден'
-            else:
-                return 'Не найдено, проверьте правильность введенного вами идентификатора или введите "-help get" для просмотра помощи по команде'
-        else:
-            return 'Введите "-help" для помощи по командам'
-
     def createTicket(self, userData, message, attachments={}, userAgent='telegram-API/0.0.2'):
         """[summary]
         отправляет curl апишке osticket на создание тикета
@@ -92,6 +57,7 @@ class OsTelegramBot:
             return r.text
 
     def addToTicket(self, ticketNumber, message, userData, attachments={}, userAgent='telegram-API/0.0.1'):
+        print('addToTicket run\n\n')
         headers = {'X-API-Key': self.osToken,
                    'User-Agent': userAgent,
                    'content-type': 'application/json'}
@@ -103,7 +69,7 @@ class OsTelegramBot:
                 'email': userData['id'],
                 'message': message,
                 'ip': '127.0.0.1',
-                'attachments': {attachments}
+                'attachments': attachments
             },
             'key': self.osToken,
         }
@@ -111,22 +77,6 @@ class OsTelegramBot:
             self.osUrl, json=data, headers=headers, verify=False)
         print('addToTicket response.text: ',response.text)
         return json.loads(response.text)
-
-    def sendMessage(self, chat_id, text):
-        """[summary]
-        Отпрпавляет телеграм API запрос на оправку сообщения от бота
-        Args:
-            chat_id ([type]): id чата куда отправлять
-            text ([type]): текст сообщения
-
-        Returns:
-            [type]: статус код ответа
-        """
-        method = "sendMessage"
-        url = f"https://api.telegram.org/bot{self.botkey}/{method}"
-        data = {"chat_id": chat_id, "text": text}
-        response = requests.post(url, json=data, verify=False)
-        return response.status_code
 
     def getStoryMessage(self, username, ticketNumber):
         """[summary]
