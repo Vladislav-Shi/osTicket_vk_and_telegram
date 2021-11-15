@@ -1,4 +1,5 @@
 <?php
+include_once 'config.php';
 include_once 'class.myapi.php';
 /**
  * API со стороны sticket для телеграм бота
@@ -9,23 +10,17 @@ include_once 'class.myapi.php';
  */
 $postData = file_get_contents('php://input');
 $data = json_decode($postData, true);
+$APIobject = new MyAPI($apiConfig['os_url'], $apiConfig['os_key'], $apiConfig);
+// for($i =0; $i <15; $i++)
+// {
+//     echo '<br><a href="' . $APIobject->getLoadUrl($i). '">' .$APIobject->getLoadUrl($i) . '</a>';
+// }
 
-// $data = array(
-//     'ticketNumber' => 670793,
-//     'name'      =>      'John Doe2',
-//     'email'     =>      'vlad.shirobockow@yandex.ru',
-//     'message'   =>      'This is a test of the osTicket API2',
-//     'ip'        =>      '127.0.0.1',
-//     'attachments' => array(),
-// );
-// echo $APIobject->addToTicket($data);
-// // $data = array('ticketNumber' => '670793', 'username' => 'user');
-// // echo $APIobject->getMessageStory($data);
 
 if (empty($data['function'])) {
     die('Пост запрос пуст или составлен не правильно');
 }
-$APIobject = new MyAPI('https://osticket.local/api/', '68AFA8405E8B569A1E8441C841182CFD');
+$APIobject = new MyAPI($apiConfig['os_url'], $apiConfig['os_key'], $apiConfig);
 if ($data['key'] != '68AFA8405E8B569A1E8441C841182CFD') {
     die('Неверный ключ досутпа к API');
 }

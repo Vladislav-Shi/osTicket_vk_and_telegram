@@ -1,6 +1,6 @@
 token = '1995864519:AAHR1ceeWOgoPAHWUjpwe37lmDGkLPTLLqE'
 
-webhook_url = 'https://6aea-188-114-35-176.ngrok.io'
+webhook_url = 'https://4f1a-217-149-179-106.ngrok.io'
 
 os_url = 'https://osticket.local/my_api/myapi.php'
 

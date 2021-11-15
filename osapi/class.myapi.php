@@ -7,6 +7,36 @@ include_once INCLUDE_DIR . "class.json.php";
 
 class MyAPI extends ApiController
 {
+    function getLoadUrl($fileId)
+    {
+        /**
+         * Генери
+         * рует ссылку на скачивание/просмотр изображения изображения
+         * ссылка должа быть на существующий файл get_picture.php который обрабатывает гет запрос 
+         * @param $fileId - Тип int id записи из таблицы FILE_TABLE
+         * @return url для скачивания изображения
+         */
+
+        $encryptedId = @openssl_encrypt($fileId, $this->apiConfig['encrypt_method'], $this->apiConfig['encrypt_key']);
+        $id = openssl_decrypt($encryptedId, $this->apiConfig['encrypt_method'], $this->apiConfig['encrypt_key']); // расшифровка
+        $url = $this->apiConfig['picture_url'] . '?id=' . urlencode($encryptedId) . '&orig = '. $id;
+        return $url;
+    }
+
+    static function getPicture($fileId)
+    {
+        /**
+         * Функция выполняет загрузку файла по введенному id файла
+         * @param $fileId - id файла из таблицы FILE_TABLE
+         * Выводит на экран изображение остальные все выводы убирает
+         */
+        $file = AttachmentFile::lookup((int)$fileId);
+        $minage = @$options['minage'] ?: 43200;
+        $gmnow = Misc::gmtime() +  $options['minage'];
+        $expires = $gmnow + 86400 - ($gmnow % 86400);
+        // $upload = $file->download($file->getName(), '', $expires); // для загрузки
+        $upload = $file->display(); // для показа на экране
+    }
 
     static $commonParams = array(
         'ownerMessageType' => 'M',
@@ -16,10 +46,11 @@ class MyAPI extends ApiController
         'closedTicketStatus' => 'closed'
     );
 
-    function __construct($url, $key)
+    function __construct($url, $key, $apiConfig)
     {
         $this->url = $url;
         $this->key = $key;
+        $this->apiConfig = $apiConfig;
     }
 
     // Возвращает тикет по введенному id
@@ -154,6 +185,10 @@ class MyAPI extends ApiController
 
     function addToTicket($postData)
     {
+        /**
+         * Метод добавляет в существующий тикет ответ на него
+         * В случае успешного выполнения возвращает sucsessfull
+         */
         try {
             function_exists('json_encode') or die('JSON support required');
             $this->createUser($postData['name'], $postData['email']); // создет пользоваетля если его не было до этого
@@ -255,26 +290,36 @@ class MyAPI extends ApiController
         }
         /**
          * Получает цепочку сообщений в массив
-         * @param $username - имя пользователя запросившего историю
-         * @param $ticketNumber номер запрашиваемого тикета 
-         * @param $ignored - флаг, осуществалять ли проверку или нет если 1, то проверка на принадлежность пользователя к ти кету осуществляется
+         * @param $data['username'] - имя пользователя запросившего историю
+         * @param $data['ticketNumber'] номер запрашиваемого тикета 
+         * @param $data['ignored'] - флаг, осуществалять ли проверку или нет если 1, то проверка на принадлежность пользователя к ти кету осуществляется
          * 
          * @return 0 или оформленный массив сообщений
          */
         $ticketId = Ticket::getIdByNumber((int)$data['ticketNumber']);
         $query = sprintf(
-            "SELECT th.*, u.name, u.default_email_id FROM %s AS th LEFT JOIN %s AS u ON th.user_id = u.id 
+            "SELECT th.*, u.name, u.default_email_id, att.file_id FROM %s AS th 
+            LEFT JOIN %s AS u ON th.user_id = u.id 
+            LEFT JOIN %s AS att ON th.id = att.object_id
             WHERE th.thread_id = %d ORDER BY th.id ASC; ",
             THREAD_ENTRY_TABLE,
             USER_TABLE,
+            ATTACHMENT_TABLE,
             db_input($ticketId)
         );
         $r = db_query($query);
         $result = db_assoc_array($r);
         $message = array();
         foreach ($result as $element) {
+            if(is_numeric($element['file_id']))
+            {
+                $attacment = "\nВложение: " . $this->getLoadUrl((string)$element['file_id']);
+            }
+            else{
+                $attacment = '';
+            }
             $message[] = "Poster: " . $element['name'] . "\nDate: " . $element['created'] . "\nMessage: " .
-                $element['body'];
+                $element['body'] . $attacment;
         }
         return implode("\n\n", $message);
     }
