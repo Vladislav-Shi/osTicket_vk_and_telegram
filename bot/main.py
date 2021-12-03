@@ -1,26 +1,66 @@
 from re import A
 from typing import Text
 from flask import Flask, request
+from requests.models import Response
 from telebot.types import File, Message, KeyboardButton, ReplyKeyboardMarkup
 import osticketbot as tgb
 import telebot  # pyTelegrambotapi
 import time
 import base64
 import config  # Хранит конфигурационные перменные
+import bd
 
 app = Flask(__name__)
 bot = telebot.TeleBot(config.token)
 osBot = tgb.OsTelegramBot(config.token, config.os_url,
                           config.os_key)
 bot.set_webhook(url=config.webhook_url)
+if config.message_log:
+    bd_work = bd.BdWork(config.bd_config)  # Для работы с бд
+else:
+    bd_work = None
 time.sleep(1)  # для фикса ошибки с большим кол-вом реквестов
+
+
+def getPhoto(photo_array):
+    """
+    Args:
+        photo_array - list содаржащий все версии фотографии -1 элемент это оригинальный размер
+
+    Returns:
+        подходящий для отпарвки API словать
+    """
+    file_id = photo_array[-1].file_id
+    file_info = bot.get_file(file_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+    mimie_type = str(file_info.file_path.split('.')[-1])
+    data = 'data:image/' + mimie_type + ';base64,' + \
+        base64.b64encode(downloaded_file).decode("utf-8")
+    return {file_id + '.' + mimie_type: data}
+
+
+def add_to_log(bd_work: bd.BdWork or None, message: Message, response: str):
+    """
+    Данная функция логирует сообщения, если класс работы с бд был все-таки создан
+    Args:
+        bd_work: сам класс или None
+        message (Message): объект сообщения пользователя
+        respose (str): Ответ который сервер отправит
+    """
+    if bd_work == None:
+        return
+    param = {
+        'message_text': message.text,
+        'user_id': message.chat.id,
+        'response': response
+    }
+    bd_work.addToLogTable(param)
 
 
 def build_menu(button_list_str: list[str], num_row=2):
     button_list = [KeyboardButton(ss) for ss in button_list_str]
     menu = [button_list[i:i + num_row]
             for i in range(0, len(button_list), num_row)]
-    print(menu)
     keyboard = ReplyKeyboardMarkup()
     for line in menu:
         keyboard.row(*line)
@@ -39,6 +79,13 @@ def webhook():
     return "ok"
 
 
+"""
+##################################################################################################################
+***** ТУТ УЖЕ СОБЫТИЯ БОТА *****
+##################################################################################################################
+"""
+
+
 @bot.message_handler(commands=['help'])
 def help_command(message: Message):
     """
@@ -48,28 +95,35 @@ def help_command(message: Message):
     """
     param = message.text.split()
     if len(param) > 1:
-        bot.send_message(message.chat.id, osBot.getHelpText(
-            param[1]),  reply_markup=None)
+        response = osBot.getHelpText(param[1])
+        bot.send_message(message.chat.id, response,  reply_markup=None)
     else:
-        bot.send_message(message.chat.id, osBot.getHelpText(),
-                         reply_markup=None)
+        response = osBot.getHelpText()
+        bot.send_message(message.chat.id, response, reply_markup=None)
+    add_to_log(bd_work, message, response)
 
 
 @bot.message_handler(commands=['create'])
 def create_command(message: Message):
-    bot.send_message(message.chat.id, "Введите текст проблемы")
+    response = 'Введите текст проблемы'
+    bot.send_message(message.chat.id, response)
+    add_to_log(bd_work, message, response)
     bot.register_next_step_handler(message, ask_body_ticket)
 
 
 @bot.message_handler(commands=['add'])
 def add_command(message: Message):
-    bot.send_message(message.chat.id, "Введите номер вашего билета")
+    response = 'Введите номер вашего билета'
+    bot.send_message(message.chat.id, response)
+    add_to_log(bd_work, message, response)
     bot.register_next_step_handler(message, ask_ticket_to_add)
 
 
 @bot.message_handler(commands=['history'])
 def history_command(message: Message):
-    bot.send_message(message.chat.id, 'Введите номер запрашиваемого билета')
+    response = 'Введите номер запрашиваемого билета'
+    bot.send_message(message.chat.id, response)
+    add_to_log(bd_work, message, response)
     bot.register_next_step_handler(message, ask_ticket_history)
 
 
@@ -81,35 +135,37 @@ def all_text_command(message: Message):
     если нет фотографии, то поле message.photo = None
     если нет писания к вложению, то поле message.caption = None
     """
-    print('text: ', message.text)
-    print('document: ', message.document)
-    print('caption: ', message.caption)
-    print('photo: ', message.photo)
-    # if not message.photo is None:
-    # print(getPhoto(message.photo))
+    response = 'Воспользуйтесь клавиатурой для выбора нужного'
     bot.send_message(
-        message.chat.id, 'Воспользуйтесь клавиатурой для выбора нужного', reply_markup=keyboard1)
+        message.chat.id, response, reply_markup=keyboard1)
+    add_to_log(bd_work, message, response)
 
 
 def ask_ticket_history(message: Message):
     number = int(message.text)
-    print('number', number)
     result = osBot.getStoryMessage(message.chat.username, number)
     if result == '0':
+        response = 'Зявка с таким номером не существует или вы не являетесь ее владельцем'
         bot.send_message(
-            message.chat.id, 'Зявка с таким номером не существует или вы не являетесь ее владельцем')
+            message.chat.id, response)
+        add_to_log(bd_work, message, response)
     else:
+        response = result
         bot.send_message(message.chat.id, result)
+        add_to_log(bd_work, message, response)
 
 
 def ask_ticket_to_add(message: Message):
-    response = osBot.getTicketOwner(message.chat.username, message.text)
-    print('response: ', response)
-    if response == '-1':
+    result = osBot.getTicketOwner(message.chat.username, message.text)
+    if result == '-1':
+        response = 'Зявка с таким номером не существует или вы не являетесь ее владельцем'
         bot.send_message(
-            message.chat.id, 'Зявка с таким номером не существует или вы не являетесь ее владельцем')
+            message.chat.id, response)
+        add_to_log(bd_work, message, response)
     else:
-        bot.send_message(message.chat.id, 'Введите ответ')
+        response = 'Введите ответ'
+        bot.send_message(message.chat.id, response)
+        add_to_log(bd_work, message, response)
         bot.register_next_step_handler(
             message, add_ticket_ansver,  message.text)
 
@@ -123,16 +179,18 @@ def add_ticket_ansver(message: Message, ticket_number):
             ticket_number, message.caption, user_data, attachments=attacment)
     else:
         result = osBot.addToTicket(ticket_number, message.text, user_data)
-    print('result', result)
     if result['status'] == 'success':
-        bot.send_message(message.chat.id, 'Ответ успешно добавлен')
+        response = 'Ответ успешно добавлен'
+        bot.send_message(message.chat.id, response)
+        add_to_log(bd_work, message, response)
     else:
-        bot.send_message(message.chat.id, 'Ошибка добавления ответа')
+        response = 'Ошибка добавления ответа'
+        bot.send_message(message.chat.id, response)
+        add_to_log(bd_work, message, response)
 
 
 def ask_body_ticket(message: Message):
-    """[summary]
-
+    """
     Args:
         message (Message): сообщение которое будет добавлено
     """
@@ -144,24 +202,7 @@ def ask_body_ticket(message: Message):
     else:
         result = osBot.createTicket(user_data,  message.text)
     bot.send_message(message.chat.id, result)
-
-
-def getPhoto(photo_array):
-    """[summary]
-
-    Args:
-        photo_array - list содаржащий все версии фотографии -1 элемент это оригинальный размер
-
-    Returns:
-        подходящий для отпарвки API словать
-    """
-    file_id = photo_array[-1].file_id
-    file_info = bot.get_file(file_id)
-    downloaded_file = bot.download_file(file_info.file_path)
-    mimie_type = str(file_info.file_path.split('.')[-1])
-    data = 'data:image/' + mimie_type + ';base64,' + \
-        base64.b64encode(downloaded_file).decode("utf-8")
-    return {file_id + '.' + mimie_type: data}
+    add_to_log(bd_work, message, result)
 
 
 if(__name__ == '__main__'):
