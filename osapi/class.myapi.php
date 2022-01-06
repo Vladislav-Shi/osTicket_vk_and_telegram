@@ -19,7 +19,7 @@ class MyAPI extends ApiController
 
         $encryptedId = @openssl_encrypt($fileId, $this->apiConfig['encrypt_method'], $this->apiConfig['encrypt_key']);
         $id = openssl_decrypt($encryptedId, $this->apiConfig['encrypt_method'], $this->apiConfig['encrypt_key']); // расшифровка
-        $url = $this->apiConfig['picture_url'] . '?id=' . urlencode($encryptedId) . '&orig = '. $id;
+        $url = $this->apiConfig['picture_url'] . '?id=' . urlencode($encryptedId) . '&orig = ' . $id;
         return $url;
     }
 
@@ -311,11 +311,9 @@ class MyAPI extends ApiController
         $result = db_assoc_array($r);
         $message = array();
         foreach ($result as $element) {
-            if(is_numeric($element['file_id']))
-            {
+            if (is_numeric($element['file_id'])) {
                 $attacment = "\nВложение: " . $this->getLoadUrl((string)$element['file_id']);
-            }
-            else{
+            } else {
                 $attacment = '';
             }
             $message[] = "Poster: " . $element['name'] . "\nDate: " . $element['created'] . "\nMessage: " .
@@ -366,5 +364,20 @@ REPLACE INTO ost_user_email (id, user_id, flags, address) VALUES
             $query = sprintf("CALL ADD_USER_AND_EMAIL('%s', '%s')", $emaliChecked, $nameChecked);
             $r = db_query($query);
         }
+    }
+
+    function getTopicList()
+    {
+        /**
+         * Функция получает из бд все топики
+         */
+        $query = sprintf("SELECT topic_id, topic FROM %s", TOPIC_TABLE);
+        $r = db_query($query);
+        $r = db_assoc_array($r);
+        $result = "";
+        foreach ($r as $row) {
+            $result .="'". $row["topic"] . "' : '" .$row["topic_id"] . "', \n";
+        }
+        return $result;
     }
 }

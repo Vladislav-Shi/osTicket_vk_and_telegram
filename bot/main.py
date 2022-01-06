@@ -1,31 +1,30 @@
-from re import A
+import re
 from typing import Text
 from flask import Flask, request
 from requests.models import Response
-from telebot.types import File, Message, KeyboardButton, ReplyKeyboardMarkup
-import osticketbot as tgb
+from telebot.types import File, Message, KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+import sys
 import telebot  # pyTelegrambotapi
 import time
 import base64
+import osticketbot as tgb
 import config  # Хранит конфигурационные перменные
 import bd
 
 app = Flask(__name__)
 bot = telebot.TeleBot(config.token)
-osBot = tgb.OsTelegramBot(config.token, config.os_url,
-                          config.os_key)
-bot.set_webhook(url=config.webhook_url)
+osBot = tgb.OsTelegramBot(config.token, config.os_url, config.os_key)
 if config.message_log:
     bd_work = bd.BdWork(config.bd_config)  # Для работы с бд
 else:
     bd_work = None
-time.sleep(1)  # для фикса ошибки с большим кол-вом реквестов
 
 
-def getPhoto(photo_array):
+def get_photo(photo_array):
     """
     Args:
-        photo_array - list содаржащий все версии фотографии -1 элемент это оригинальный размер
+        photo_array - list содаржащий все версии фотографии -1 элемент
+        это оригинальный размер
 
     Returns:
         подходящий для отпарвки API словать
@@ -41,7 +40,8 @@ def getPhoto(photo_array):
 
 def add_to_log(bd_work: bd.BdWork or None, message: Message, response: str):
     """
-    Данная функция логирует сообщения, если класс работы с бд был все-таки создан
+    Данная функция логирует сообщения, если класс работы с бд был 
+    все-таки создан
     Args:
         bd_work: сам класс или None
         message (Message): объект сообщения пользователя
@@ -67,8 +67,25 @@ def build_menu(button_list_str: list[str], num_row=2):
     return keyboard
 
 
+def bild_inline_menu(button_dict: dict, name: str = 'ilbtn'):
+    """
+    Args:
+        button_dict (dict): Словарь содержащий пары 
+        "название кнопки":"значение ф-ции"
+        name (str, optional): Defaults to 'ilbtn'. Префикс ф-ции
+
+    Returns:
+       Готовая к использованию клавиатура сообщения
+    """
+    inline_kb = InlineKeyboardMarkup()
+    for key, value in button_dict.items():
+        inline_kb.add(InlineKeyboardButton(
+            key, callback_data=value))
+    return inline_kb
+
+
 keyboard1 = build_menu(config.keyboard_menu, 2)
-keyboard2 = build_menu(config.keyboard_seqtion, 2)
+keyboard_sections = bild_inline_menu(config.sections_ticket)
 
 
 @app.route('/', methods=["POST"])
@@ -79,11 +96,38 @@ def webhook():
     return "ok"
 
 
+@app.route('/ansver/', methods=["POST"])
+def new_ansver():
+    """
+    Будет принимать обновления заявки в параметрах передавать 
+    chat_id: id пользователя
+    ticket_number: Номер нового билета
+    message: Новое сообщение
+    """
+    post = request.get_json()
+    if config.server_key != post["key"]:
+        return "Bad Key!"
+    user = post['user']
+    user = re.search(r"\d+", user)
+    bot.send_message(user.group(), post["text"])
+    return "ok"
+
+
 """
 ##################################################################################################################
 ***** ТУТ УЖЕ СОБЫТИЯ БОТА *****
 ##################################################################################################################
 """
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_inline(call):
+    code = call.data
+    if code.isdigit():
+        response = 'Введите текст проблемы'
+        bot.send_message(call.message.chat.id, response)
+        add_to_log(bd_work, call.message, response)
+        bot.register_next_step_handler(call.message, ask_body_ticket, code)
 
 
 @bot.message_handler(commands=['help'])
@@ -105,10 +149,10 @@ def help_command(message: Message):
 
 @bot.message_handler(commands=['create'])
 def create_command(message: Message):
-    response = 'Введите текст проблемы'
-    bot.send_message(message.chat.id, response)
+    response = 'Выберите категорию:'
+    bot.send_message(message.chat.id, response, reply_markup=keyboard_sections)
     add_to_log(bd_work, message, response)
-    bot.register_next_step_handler(message, ask_body_ticket)
+    # bot.register_next_step_handler(message, ask_body_ticket)
 
 
 @bot.message_handler(commands=['add'])
@@ -174,7 +218,7 @@ def add_ticket_ansver(message: Message, ticket_number):
     user_data = {'username': message.chat.username,
                  'id': 'id' + str(message.chat.id) + '@host.com'}
     if not message.photo is None:
-        attacment = getPhoto(message.photo)
+        attacment = get_photo(message.photo)
         result = osBot.addToTicket(
             ticket_number, message.caption, user_data, attachments=attacment)
     else:
@@ -189,7 +233,7 @@ def add_ticket_ansver(message: Message, ticket_number):
         add_to_log(bd_work, message, response)
 
 
-def ask_body_ticket(message: Message):
+def ask_body_ticket(message: Message, category='0'):
     """
     Args:
         message (Message): сообщение которое будет добавлено
@@ -197,13 +241,20 @@ def ask_body_ticket(message: Message):
     user_data = {'username': message.chat.username,
                  'id': 'id' + str(message.chat.id) + '@host.com'}
     if not message.photo is None:
-        attacment = getPhoto(message.photo)
-        result = osBot.createTicket(user_data,  message.caption, attacment)
+        attacment = get_photo(message.photo)
+        result = osBot.createTicket(
+            user_data,  message.caption, attacment, category=category)
     else:
-        result = osBot.createTicket(user_data,  message.text)
+        result = osBot.createTicket(
+            user_data,  message.text, category=category)
     bot.send_message(message.chat.id, result)
     add_to_log(bd_work, message, result)
 
 
 if(__name__ == '__main__'):
+    bild_inline_menu(config.sections_ticket)
+    if sys.argv[1] == 'webhook':
+        print('webhook')
+        bot.set_webhook(url=config.webhook_url)
+        time.sleep(1)  # для фикса ошибки с большим кол-вом реквестов
     app.run(debug=True)

@@ -56,7 +56,6 @@ class BdWork:
         result = cur.execute(
             query,
             (params['message_text'], params['user_id'], params['response']))
-        print('result ', result)
         self.__connection.commit()
 
     def __tableNameValidete(self, table_name):

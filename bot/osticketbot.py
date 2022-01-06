@@ -1,23 +1,31 @@
-import requests
 import re
 import json
+import requests
 from telebot.types import PhotoSize
 
 
 class OsTelegramBot:
 
     def __init__(self, botkey, osUrl, osToken) -> None:
-        """[summary]
+        """
         Args:
             botkey ([string]): ключ для доступа к боту
-            osUrl ([type]): ссылка на API остикет (ссылка типа .../api/tickets.json)
-            osToken ([type]): ключ чтобы API osTicket могло обработаь запрос (брать в админке osTicket)
+            osUrl ([string]): ссылка на API остикет (ссылка типа .../api/tickets.json)
+            osToken ([string]): ключ чтобы API osTicket могло обработаь запрос (брать в админке osTicket)
         """
         self.botkey = botkey
         self.osUrl = osUrl
         self.osToken = osToken
+        # на stackowerflow было написано что нужно скомпилировать ОДИН раз
+        self.CLEANR = re.compile('<.*?>')  # Для чистки от тегов
 
-    def createTicket(self, userData, message, attachments={}, userAgent='telegram-API/0.0.2'):
+    def createTicket(self,
+                     userData,
+                     message,
+                     attachments={},
+                     userAgent='telegram-API/0.0.2',
+                     category=0,
+                     source='telegram-bot'):
         """[summary]
         отправляет curl апишке osticket на создание тикета
 
@@ -26,11 +34,12 @@ class OsTelegramBot:
             message ([type]): само тело тикета
             attachments (dict, optional): [description]. массив типа [{<имя файла> : <сообщение в кодировка base64>}]
             userAgent (str, optional): [description]. Defaults to 'telegram-API/0.0.1'.
+            category: категория заявки, по умолчанию 0 (без категории)
+            source: откуда получено
 
         Returns:
             Возвращает строку с id созданной заявки или 0 в случае неудачи
         """
-        print('createTicket run:')
         headers = {'X-API-Key': self.osToken,
                    'User-Agent': userAgent,
                    'content-type': 'application/json', }
@@ -42,22 +51,25 @@ class OsTelegramBot:
                 'email': userData['id'],
                 'subject': userData['username'],
                 'message': message,
+                'topicId': category,
                 'ip': '127.0.0.1',
                 'attachments': attachments,
             },
             'key': self.osToken,
         }
-        print(data)
-        r = requests.post(self.osUrl,
-                          json=data, headers=headers, verify=False)
+        r = requests.post(self.osUrl, json=data, headers=headers, verify=False)
         print('r', r)
         if r.status_code == 201:
-            return r.text
+            return self.htmlClear(r.text)
         else:
-            return r.text
+            return self.htmlClear(r.text)
 
-    def addToTicket(self, ticketNumber, message, userData, attachments={}, userAgent='telegram-API/0.0.1'):
-        print('addToTicket run\n\n')
+    def addToTicket(self,
+                    ticketNumber,
+                    message,
+                    userData,
+                    attachments={},
+                    userAgent='telegram-API/0.0.1'):
         headers = {'X-API-Key': self.osToken,
                    'User-Agent': userAgent,
                    'content-type': 'application/json'}
@@ -75,18 +87,17 @@ class OsTelegramBot:
         }
         response = requests.post(
             self.osUrl, json=data, headers=headers, verify=False)
-        print('addToTicket response.text: ',response.text)
+        print('addToTicket response.text: ', response.text)
         return json.loads(response.text)
 
     def getStoryMessage(self, username, ticketNumber):
-        """[summary]
-
+        """
         Args:
             username (str): [description]
             ticketNumber (int): [description]
 
         Returns:
-            [type]: [description]
+            текст ответа
         """
         data = {'function': 'getMessageStory',
                 'args': {
@@ -95,8 +106,7 @@ class OsTelegramBot:
                 },
                 'key': self.osToken, }
         response = requests.post(self.osUrl, json=data, verify=False)
-        print(response.status_code, response.text)
-        return response.text
+        return self.htmlClear(response.text)
 
     def getHelpText(self, typeText='all'):
         """[summary]
@@ -105,8 +115,6 @@ class OsTelegramBot:
         Args:
             typeText (str, optional): [description]. Defaults to 'all'.
 
-        Returns:
-            [type]: [description]
         """
         if typeText == 'add':
             return '-add <id>\n<text>\n\n Команда добавляет ответ к уже созданной вами заявке\
@@ -121,12 +129,41 @@ class OsTelegramBot:
             \n\n -add <номер заявки> <текст с новой строки>\n* Добавляет ответ по номеру заявки'
 
     def getTicketOwner(self, username, ticket_number):
-        print('getTicketOwner is run')
         data = {'function': 'checkTicketOwner',
                 'args': {
                     'username': username,
                     'ticketNumber': ticket_number},
                 'key': self.osToken}
         response = requests.post(self.osUrl, json=data, verify=False)
-        return response.text
+        return self.htmlClear(response.text)
 
+    def getTopicFromApi(self):
+        """
+        ***********************************
+        стоит использовать только для получения вывода в консоль
+
+        Returns:
+            Строку содержащую пару id:topit_name
+
+        """
+        data = {'function': 'getTopicList',
+                'args': {},
+                'key': self.osToken, }
+        response = requests.post(self.osUrl, json=data, verify=False)
+        return self.htmlClear(response.text)
+
+    def htmlClear(self, text: str):
+        """
+        Очищает переданный в параметре текст от всех тегов
+        Args:
+            text (str): Текст который требуется очистить
+
+        """
+        cleantext = re.sub(self.CLEANR, '', text)
+        return cleantext
+
+
+if __name__ == '__main__':
+    import config  # Хранит конфигурационные перменные
+    osBot = OsTelegramBot(config.token, config.os_url, config.os_key)
+    print('\n', osBot.getTopicFromApi(), sep='')
