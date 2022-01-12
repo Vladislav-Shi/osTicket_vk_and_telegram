@@ -152,7 +152,6 @@ def create_command(message: Message):
     response = 'Выберите категорию:'
     bot.send_message(message.chat.id, response, reply_markup=keyboard_sections)
     add_to_log(bd_work, message, response)
-    # bot.register_next_step_handler(message, ask_body_ticket)
 
 
 @bot.message_handler(commands=['add'])
