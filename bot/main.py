@@ -105,11 +105,13 @@ def new_ansver():
     message: Новое сообщение
     """
     post = request.get_json()
+    print(post)
     if config.server_key != post["key"]:
+        print("Ключ не подходит!!!")
         return "Bad Key!"
     user = post['user']
     user = re.search(r"\d+", user)
-    bot.send_message(user.group(), post["text"])
+    bot.send_message(user.group(), osBot.htmlClear(post["text"]))
     return "ok"
 
 

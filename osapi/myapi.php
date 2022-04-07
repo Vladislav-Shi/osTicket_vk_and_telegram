@@ -11,12 +11,6 @@ include_once 'class.myapi.php';
 $postData = file_get_contents('php://input');
 $data = json_decode($postData, true);
 $APIobject = new MyAPI($apiConfig['os_url'], $apiConfig['os_key'], $apiConfig);
-// for($i =0; $i <15; $i++)
-// {
-//     echo '<br><a href="' . $APIobject->getLoadUrl($i). '">' .$APIobject->getLoadUrl($i) . '</a>';
-// }
-
-
 if (empty($data['function'])) {
     die('Пост запрос пуст или составлен не правильно');
 }

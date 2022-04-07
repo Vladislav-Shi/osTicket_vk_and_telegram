@@ -374,10 +374,10 @@ REPLACE INTO ost_user_email (id, user_id, flags, address) VALUES
         $query = sprintf("SELECT topic_id, topic FROM %s", TOPIC_TABLE);
         $r = db_query($query);
         $r = db_assoc_array($r);
-        $result = "";
+        $result = array();
         foreach ($r as $row) {
-            $result .="'". $row["topic"] . "' : '" .$row["topic_id"] . "', \n";
+            $result[$row["topic"]] = $row["topic_id"];
         }
-        return $result;
+        return json_encode($result);
     }
 }

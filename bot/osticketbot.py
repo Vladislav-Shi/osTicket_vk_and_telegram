@@ -1,7 +1,7 @@
 import re
 import json
 import requests
-from telebot.types import PhotoSize
+# from telebot.types import PhotoSize
 
 
 class OsTelegramBot:
@@ -144,7 +144,6 @@ class OsTelegramBot:
 
         Returns:
             Строку содержащую пару id:topit_name
-
         """
         data = {'function': 'getTopicList',
                 'args': {},
@@ -157,7 +156,6 @@ class OsTelegramBot:
         Очищает переданный в параметре текст от всех тегов
         Args:
             text (str): Текст который требуется очистить
-
         """
         cleantext = re.sub(self.CLEANR, '', text)
         return cleantext

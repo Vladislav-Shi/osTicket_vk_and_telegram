@@ -1,6 +1,6 @@
 token = '1995864519:AAHR1ceeWOgoPAHWUjpwe37lmDGkLPTLLqE'  # Телеграм бот токен
 
-webhook_url = 'https://2ec5-85-26-235-171.ngrok.io' # Ссылка на ngrook
+webhook_url = 'https://33bf-217-149-179-106.ngrok.io' # Ссылка на ngrook
 
 os_url = 'https://osticket.local/my_api/myapi.php'
 

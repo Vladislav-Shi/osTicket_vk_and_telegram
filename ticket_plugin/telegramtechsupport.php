@@ -69,7 +69,6 @@ class TelegramTechSupport extends Plugin
         $temp = curl_exec($ch);
         $ee = curl_getinfo($ch);
         curl_close($ch);
-        file_put_contents("volsu_log.txt", print_r($ee, true) . "\n\n" . print_r($temp, true));
         return json_decode($temp, true);
     }
 }
