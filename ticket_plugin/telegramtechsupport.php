@@ -46,7 +46,6 @@ class TelegramTechSupport extends Plugin
             . "\nText: " . $entry->getBody();
         $post = array("key" => $key_url, "user" => $user_telegram_id[0], "text" => $text);
         $post = json_encode($post, JSON_UNESCAPED_UNICODE);
-        file_put_contents("volsu_log.txt", "Second\n" . $post);
         $this->sendToBot($url, $post);
     }
     function getTicket(ThreadEntry $entry)

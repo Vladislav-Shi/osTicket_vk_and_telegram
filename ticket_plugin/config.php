@@ -19,7 +19,7 @@ class TelegramTechSupportConfig extends PluginConfig
                 'label' => 'Telegram Bot for tech. support',
             )),
             'bot_url' => new TextboxField(array(
-                'label' => 'Сслыка на сервер с ботом',
+                'label' => 'Ссылка на сервер с ботом',
                 'configuration' => array('size'=> 100, 'length' => 200),
                 'default' => "http://localhost:5000/ansver/",
             )),

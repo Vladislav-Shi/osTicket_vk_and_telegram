@@ -1,5 +1,3 @@
-ngrok
-bot/__pycache__
-.venv
-.readme.md1
-.vscode
+.gitignore
+.commands.txt
+.config_set.py
