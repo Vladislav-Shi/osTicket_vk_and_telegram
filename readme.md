@@ -23,4 +23,4 @@
 * Уведомление об ответе
 
 Работают они через *inline* клавиатуры
-![Image alt](https://github.com/Vladislav-Shi/osTicket_vk_and_telegram/raw/master/other_file/bot_screen_1.jpg)
+![Image alt](https://github.com/Vladislav-Shi/osTicket_vk_and_telegram/raw/master/other_file/screen_1.jpg)
