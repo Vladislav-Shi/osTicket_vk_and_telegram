@@ -10,8 +10,17 @@
 
 Для устанвоки API Требуется создать в проекте папку доступную из веба (напимер */upload/api2*) и переместить туда все файлы папки **osticket_api**. Далее необходимо настроить файл **config.php**. Там необходимо настроить ключ шифрования и ввести ключ шифрования.
 
-Также необходимо будет настроить конфигурацию веб сервера. ( *для примера вот конфигурация на NGINX* )   [file.conf](https://github.com/Vladislav-Shi/osTicket_vk_and_telegram/other_file/file.conf).
+Также необходимо будет настроить конфигурацию веб сервера. ( *для примера вот конфигурация на NGINX* )   [file.conf](https://github.com/Vladislav-Shi/osTicket_vk_and_telegram/blob/master/other_file/file.conf).
 
 Файл с пакетами для Python находится в папке **other_file/** под названием requirement.txt
 
 ## Работа с ботом
+
+У каждого бота имеется следующий функционал:
+* создание заявки (возможность докидывать картинку)
+* Добавления ответа в заявку
+* Просмотр истории сообщений
+* Уведомление об ответе
+
+Работают они через *inline* клавиатуры
+![Image alt](https://github.com/Vladislav-Shi/osTicket_vk_and_telegram/raw/master/other_file/bot_screen_1.jpg)
